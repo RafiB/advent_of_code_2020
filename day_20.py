@@ -1858,6 +1858,15 @@ def rotate(tile):
     #..
     ##.
     """
+    if len(tile) == 1:
+        return tile
+
+    if len(tile) == 2:
+        return [
+            [tile[1][0], tile[0][0]],
+            [tile[1][1], tile[0][1]]
+        ]
+
     rotated_tile = [['.' for c in range(len(tile[0]))] for r in range(len(tile))]
 
     for i, row in enumerate(tile):
@@ -1869,6 +1878,11 @@ def rotate(tile):
 
     for i, cell in enumerate(tile[-1]):
         rotated_tile[i][0] = cell
+
+    inside = rotate(tuple(row[1:-1] for row in tile[1:-1]))
+    for r in range(1, len(tile)-1):
+        for c in range(1, len(tile[0])-1):
+            rotated_tile[r][c] = inside[r-1][c-1]
 
     return tuple("".join(row) for row in rotated_tile)
 
@@ -1909,16 +1923,8 @@ def solve(tile_defs):
         else:
             tiles[int(curr_tile)].append(line)
 
-    # hollow out the tiles for visual debugging: we only care about matching the edges of the tiles
     for tile_id in tiles:
-        tile_rows = tiles[tile_id]
-        hollowed_rows = []
-        for i, row in enumerate(tile_rows):
-            if i == 0 or i == len(tile_rows) - 1:
-                hollowed_rows.append(row)
-            else:
-                hollowed_rows.append(row[0] + '.'*8 + row[-1])
-        tiles[tile_id] = tuple(hollowed_rows)
+        tiles[tile_id] = tuple(tiles[tile_id])
 
     board_dimension = int(len(tiles)**0.5)
 
@@ -1928,13 +1934,128 @@ def solve(tile_defs):
     print(f"there are {len(tiles)} in the grid")
 
     first_coord = Coord(x=0, y=0)
-    answer = _place_tiles(board, tiles, first_coord, seen=set())
-    tl = answer[0][0]
-    tr = answer[0][-1]
-    bl = answer[-1][0]
-    br = answer[-1][-1]
+    placed_tiles = _place_tiles(board, tiles, first_coord, seen=set())
 
-    return tl.tile_id * tr.tile_id * bl.tile_id * br.tile_id
+
+
+    image = []
+    for tile_row in placed_tiles:
+        for i, meta_row in enumerate(zip(*[t.tile for t in tile_row])):
+            line = ""
+            if i == 0:
+                continue
+            if i == len(placed_tiles[0][0].tile) - 1:
+                continue
+            for row in meta_row:
+                line += row[1:-1]
+            image.append(list(line))
+
+    search_for_seamonsters(image)
+
+    count = 0
+    for row in image:
+        for cell in row:
+            if cell == "#":
+                count += 1
+    return count
+
+
+SEAMONSTER = """\
+                  # 
+#    ##    ##    ###
+ #  #  #  #  #  #   \
+"""
+SEAMONSTER = tuple(SEAMONSTER.split("\n"))
+
+SEAMONSTER_2 = """\
+ # 
+#  
+   
+  
+#  
+ # 
+ # 
+#  
+   
+#  
+ # 
+ # 
+#  
+   
+#  
+ # 
+ ##
+ # \
+"""
+SEAMONSTER_2 = tuple(SEAMONSTER_2.split("\n"))
+
+                  # 
+#    ##    ##    ###
+ #  #  #  #  #  #   \
+SEAMONSTER_3 = """\
+   #  #  #  #  #  # 
+###    ##    ##    #
+ #                  \
+"""
+SEAMONSTER_3 = tuple(SEAMONSTER_3.split("\n"))
+
+SEAMONSTER_4 = """\
+ # 
+## 
+ # 
+  #
+   
+   
+  #
+ # 
+ # 
+  #
+   
+   
+  #
+ # 
+ # 
+  #
+   
+   
+  #
+ # \
+"""
+SEAMONSTER_4 = tuple(SEAMONSTER_4.split("\n"))
+
+SEAMONSTERS = flip(SEAMONSTER) + flip(SEAMONSTER_2) + flip(SEAMONSTER_3) + flip(SEAMONSTER_4)
+
+
+def search_for_seamonsters(image):
+    for y, row in enumerate(image):
+        for x, cell in enumerate(image):
+            for seamonster in SEAMONSTERS:
+                match_seamonster(seamonster, image, y, x)
+
+
+def match_seamonster(seamonster, image, y, x):
+
+    match = True
+    for s_y, row in enumerate(seamonster):
+        for s_x, c in enumerate(row):
+            if y + s_y >= len(image):
+                match = False
+                break
+            if x + s_x >= len(image[0]):
+                match = False
+                break
+            if seamonster[s_y][s_x] == "#":
+                if image[y+s_y][x+s_x] not in ("#", "O"):
+                    match = False
+                    break
+        if not match:
+            break
+
+    if match:
+        for s_y, row in enumerate(seamonster):
+            for s_x, c in enumerate(row):
+                if seamonster[s_y][s_x] == "#":
+                    image[y+s_y][x+s_x] = "O"
 
 
 def matches_left(board, coord, candidate):
@@ -2030,41 +2151,41 @@ def test_rotate():
 
     tile = (
         "#....####.",
-        "#.........",
-        "#.........",
-        "#........#",
-        ".........#",
-        ".........#",
-        "..........",
-        "#........#",
-        "#.........",
+        "#..#.##...",
+        "#.##..#...",
+        "######.#.#",
+        ".#...#.#.#",
+        ".#########",
+        ".###.#..#.",
+        "########.#",
+        "##...##.#.",
         "..###.#.#.",
-        )
+    )
 
     rotated_once = (
         ".##...####",
-        "..........",
-        "#.........",
-        "#.........",
-        "#.........",
-        ".........#",
-        "#........#",
-        ".........#",
-        "#........#",
+        ".######...",
+        "#.###.##..",
+        "#.###.###.",
+        "#.#.#.#...",
+        ".######.##",
+        "###.#..###",
+        "..#.###..#",
+        "##.##....#",
         "..#.###...",
         )
     assert rotate(tile) == rotated_once
 
     rotated_twice = (
         ".#.#.###..",
-        ".........#",
-        "#........#",
-        "..........",
-        "#.........",
-        "#.........",
-        "#........#",
-        ".........#",
-        ".........#",
+        ".#.##...##",
+        "#.########",
+        ".#..#.###.",
+        "#########.",
+        "#.#.#...#.",
+        "#.#.######",
+        "...#..##.#",
+        "...##.#..#",
         ".####....#",
         )
 
@@ -2072,14 +2193,14 @@ def test_rotate():
 
     rotated_thrice = (
         "...###.#..",
-        "#........#",
-        "#.........",
-        "#........#",
-        "#.........",
-        ".........#",
-        ".........#",
-        ".........#",
-        "..........",
+        "#....##.##",
+        "#..###.#..",
+        "###..#.###",
+        "##.######.",
+        "...#.#.#.#",
+        ".###.###.#",
+        "..##.###.#",
+        "...######.",
         "####...##.",
         )
 
@@ -2123,5 +2244,5 @@ def test_rotate():
 
 if __name__ == "__main__":
     test_rotate()
-    assert(solve(TEST_INPUT) == 20899048083289)
+    assert(solve(TEST_INPUT) == 273)
     print(solve(PUZZLE_INPUT))
