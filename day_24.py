@@ -1,4 +1,5 @@
 import attr
+from collections import defaultdict
 
 TEST_INPUT = """sesenwnenenewseeswwswswwnenewsewsw
 neeenesenwnwwswnenewnwwsewnenwseswesw
@@ -401,11 +402,48 @@ def solve(instructions):
         else:
             black_tiles.add(destination_to_tuple)
 
-    return len(black_tiles)
+    return len(simulate(black_tiles))
 
 
-def follow(instruction):
-    pos = Coord(0, 0)
+def simulate(black_tiles):
+    for i in range(100):
+        black_tiles = next_state(black_tiles)
+
+    return black_tiles
+
+
+def next_state(black_tiles):
+
+    next_black_tiles = set()
+
+    white_tile_neighbours = defaultdict(set)
+
+    for black_tile in black_tiles:
+        x, y = black_tile
+        neighbours = {
+            follow(instruction, pos=Coord(x=x, y=y))
+            for instruction in DELTAS
+        }
+        black_neighbour_count = 0
+        for neighbour_coord in neighbours:
+            neighbour = (neighbour_coord.x, neighbour_coord.y)
+            if neighbour in black_tiles:
+                black_neighbour_count += 1
+            else:
+                white_tile_neighbours[neighbour].add(black_tile)
+
+        if black_neighbour_count == 1 or black_neighbour_count == 2:
+            next_black_tiles.add(black_tile)
+
+    for white_tile, black_neighbours in white_tile_neighbours.items():
+        if len(black_neighbours) == 2:
+            next_black_tiles.add(white_tile)
+
+    return next_black_tiles
+
+def follow(instruction, pos=None):
+    if pos is None:
+        pos = Coord(0, 0)
 
     i = 0
     while i < len(instruction):
@@ -427,5 +465,5 @@ def follow(instruction):
     return pos
 
 if __name__ == "__main__":
-    assert solve(TEST_INPUT) == 10
+    assert solve(TEST_INPUT) == 2208
     print(solve(PUZZLE_INPUT))
