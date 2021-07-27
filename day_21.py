@@ -64,14 +64,11 @@ def solve(ingredients_list):
             else:
                 allergens[known_allergen] = allergens[known_allergen].intersection(set(ingredients))
 
-    # identified_allergens = try_identify_allergens(allergens)
+    while any(len(options) > 1 for options in allergens.values()):
+        allergens = try_identify_allergens(allergens)
 
-    for possible_ingredients in allergens.values():
-        for ingredient in possible_ingredients:
-            if ingredient in all_ingredients:
-                del all_ingredients[ingredient]
+    return ','.join([entry[1].pop() for entry in sorted(allergens.items())])
 
-    return sum(all_ingredients.values())
 
 
 def try_identify_allergens(allergens):
@@ -89,5 +86,5 @@ def try_identify_allergens(allergens):
     return identified
 
 if __name__ == "__main__":
-    assert solve(TEST_INPUT) == 5
+    assert solve(TEST_INPUT) == "mxmxvkd,sqjhc,fvjkl"
     print(solve(PUZZLE_INPUT))
