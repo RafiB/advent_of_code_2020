@@ -28,7 +28,7 @@ def solve(cup_order):
         min_label = min(min_label, label)
         max_label = max(max_label, label)
 
-        cup_map[label] = cup
+        cup_map[cup.label] = cup
 
         if previous_cup:
             previous_cup.right = cup
@@ -38,12 +38,21 @@ def solve(cup_order):
 
         previous_cup = cup
 
+    while max_label < 1000000:
+        max_label += 1
+        cup = Cup(label=max_label, left=previous_cup, right=None)
+
+        cup_map[cup.label] = cup
+
+        previous_cup.right = cup
+        previous_cup = cup
+
     cup.right = first
     first.left = cup
 
     current = first
 
-    for _ in range(100):
+    for _ in range(10000000):
         extract_start = current.right
         extract_end = extract_start.right.right
 
@@ -68,14 +77,9 @@ def solve(cup_order):
 
         current = current.right
 
-    c = cup_map[1]
-    state = ""
-    c = c.right
-    while c is not cup_map[1]:
-        state += f"{c.label}"
-        c = c.right
-    return state
+    cup_1 = cup_map[1]
+    return cup_1.right.label * cup_1.right.right.label
 
 if __name__ == "__main__":
-    assert solve(TEST_INPUT) == "67384529"
+    assert solve(TEST_INPUT) == 149245887792
     print(solve(PUZZLE_INPUT))
